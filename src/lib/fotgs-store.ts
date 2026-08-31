@@ -213,6 +213,27 @@ export async function createPublication(input: {
   await persistBlobCurrent(input.slug);
 }
 
+export async function updatePublicationTitle(slug: string, title: string): Promise<boolean> {
+  const existing = await getPublicationBySlug(slug);
+  if (!existing) return false;
+
+  const body: StoredFotgsPublication = {
+    version: existing.version,
+    slug: existing.slug,
+    title,
+    data: existing.data,
+    created_at: existing.created_at,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (canUseLocalStore()) {
+    await persistLocalPublication(body);
+  } else {
+    await persistBlobPublication(body);
+  }
+  return true;
+}
+
 export async function getPublicationBySlug(slug: string): Promise<FotgsPublicationRow | null> {
   const parsed = canUseLocalStore()
     ? await getLocalPublication(slug)
@@ -292,17 +313,39 @@ export async function setCurrentViewPublication(slug: string): Promise<FotgsPubl
   return existing;
 }
 
-export async function deletePublication(slug: string): Promise<boolean> {
+export async function deletePublication(slug: string): Promise<{
+  deleted: boolean;
+  replacementSlug: string | null;
+}> {
   const current = await getCurrentViewSlug();
-  if (current === slug) return false;
 
   if (canUseLocalStore()) {
+    const existing = await getLocalPublication(slug);
+    if (!existing) return { deleted: false, replacementSlug: null };
     await rm(localPublicationPath(slug), { force: true });
-    return true;
+    if (current !== slug) return { deleted: true, replacementSlug: null };
+
+    const replacementSlug = await getLatestPublicationSlug();
+    if (replacementSlug) {
+      await persistLocalCurrent(replacementSlug);
+    } else {
+      await rm(localCurrentPath(), { force: true });
+    }
+    return { deleted: true, replacementSlug };
   }
 
+  const existing = await getStoredBlobPublication(slug);
+  if (!existing) return { deleted: false, replacementSlug: null };
   await del(publicationPathname(slug), { ...blobAuthOptions() });
-  return true;
+  if (current !== slug) return { deleted: true, replacementSlug: null };
+
+  const replacementSlug = await getLatestPublicationSlug();
+  if (replacementSlug) {
+    await persistBlobCurrent(replacementSlug);
+  } else {
+    await del(CURRENT_VIEW_PATHNAME, { ...blobAuthOptions() });
+  }
+  return { deleted: true, replacementSlug };
 }
 
 export async function listPublicationSummaries(): Promise<FotgsPublicationSummary[]> {
