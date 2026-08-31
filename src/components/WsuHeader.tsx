@@ -20,7 +20,7 @@ export function WsuHeader() {
             href="/view"
             className="text-lg font-bold tracking-tight text-white hover:text-white/90 transition-colors"
           >
-            Graduate School <span className="font-normal text-white/75">|</span> Faculty Roster (FOTGS)
+            Graduate School
           </Link>
         </div>
 

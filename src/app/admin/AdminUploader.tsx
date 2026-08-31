@@ -198,7 +198,7 @@ export function AdminUploader() {
                 <span className="font-semibold text-wsu-crimson">.xlsx</span> file here, or browse
               </p>
               <p className="text-xs text-wsu-gray">
-                Requires: Updated on, EMPLID, names, degree, rank, track/status, FOTGS status, appointment status
+                Requires: Updated on, EMPLID, names, degree, rank, track/status, status, appointment status
               </p>
             </div>
           )}

@@ -463,7 +463,7 @@ export function FotgsDashboard({ publication }: { publication: PublicFotgsPublic
             </div>
           </label>
           <label className="block text-sm font-medium text-wsu-gray-dark">
-            FOTGS status
+            Status
             <select
               value={fotgsStatus}
               onChange={(e) => {
@@ -596,10 +596,10 @@ export function FotgsDashboard({ publication }: { publication: PublicFotgsPublic
                 <SortableColumnHeader field="degree" label="Highest degree" minWidth="min-w-[15rem]" />
                 <SortableColumnHeader field="rank" label="Rank" minWidth="min-w-[10rem]" />
                 <SortableColumnHeader field="track" label="Track/status" minWidth="min-w-[14rem]" />
-                <SortableColumnHeader field="fotgs" label="FOTGS status" minWidth="min-w-[12rem]" />
+                <SortableColumnHeader field="fotgs" label="Status" minWidth="min-w-[12rem]" />
                 <SortableColumnHeader field="appointment" label="Appointment" minWidth="min-w-[10rem]" />
                 <th scope="col" className="whitespace-nowrap px-3 py-2.5 text-xs font-semibold uppercase text-wsu-gray-dark">
-                  Research
+                  Research Website
                 </th>
               </tr>
             </thead>
@@ -684,9 +684,7 @@ function FacultyRow({ record }: { record: FotgsFacultyRecordPublic }) {
             Open
             <ExternalLink aria-hidden="true" className="size-3.5" />
           </a>
-        ) : (
-          <span className="text-wsu-gray">Blank</span>
-        )}
+        ) : null}
       </td>
     </tr>
   );
