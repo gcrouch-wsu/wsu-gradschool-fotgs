@@ -22,47 +22,20 @@ The first worksheet or CSV header must include these exact fields:
 | `Appointment Status` | Public filter and table |
 | `Research Webpage` | Public external link when valid |
 
-## Local development
+## Hosting requirement
 
-1. Install dependencies:
+This app is intended to run on Vercel. Do not rely on the local filesystem for published data: Vercel deployments are not a durable filesystem. Production requires a connected **private Vercel Blob** store and the `BLOB_READ_WRITE_TOKEN` variable that Vercel provides when the store is connected.
 
-   ```bash
-   npm install
-   ```
-
-2. Copy `.env.example` to `.env.local` and fill:
-
-   ```env
-   ADMIN_USERNAME=your-admin-name
-   ADMIN_PASSWORD=your-strong-password
-   AUTH_SECRET=at-least-16-random-characters
-   FOTGS_BLOB_ACCESS=private
-   ```
-
-3. Start the app:
-
-   ```bash
-   npm run dev
-   ```
-
-4. Open `http://localhost:3000/admin/login`, sign in, and upload the OBIEE `.csv` or `.xlsx`.
-
-Local development can store sanitized publications in `.fotgs-local-store/` when `BLOB_READ_WRITE_TOKEN` is absent. Vercel production requires Blob.
+The repository contains local-development fallback code for maintenance and testing, but that is not the production storage path and is not part of the Vercel setup.
 
 ## Vercel setup
 
-### 1. Put the app in GitHub
-
-1. Create a GitHub repository, for example `wsu-gradschool-fotgs`.
-2. Push this folder to the repository.
-3. Use `main` as the production branch.
-
-### 2. Import the project in Vercel
+### 1. Import the project in Vercel
 
 1. Open the Vercel dashboard.
 2. Select the correct team from the team switcher.
-3. Select **New Project**.
-4. Choose the GitHub repository.
+3. Select **Add New...** → **Project**.
+4. Under **Import Git Repository**, choose GitHub and select `gcrouch-wsu/wsu-gradschool-fotgs`.
 5. On the configuration screen:
    - **Project Name**: `wsu-gradschool-fotgs`
    - **Framework Preset**: `Next.js`
@@ -72,71 +45,79 @@ Local development can store sanitized publications in `.fotgs-local-store/` when
    - **Install Command**: leave default
 6. Select **Deploy**.
 
-The first deployment may show the public page with no publication until storage and env vars are configured.
+The first deployment may show the public page with no publication until storage and environment variables are configured. The production branch should be `main`; pushes to `main` will create production deployments after setup.
 
-### 3. Create and connect Vercel Blob
+### 2. Create and connect private Vercel Blob
 
 1. Open the Vercel project.
 2. Select **Storage**.
-3. Select **Create Database**.
-4. Choose **Blob**.
-5. Select **Continue**.
-6. Set access to **Private**.
-7. Create the Blob store and connect it to this project.
-8. Confirm the project has `BLOB_READ_WRITE_TOKEN`.
+3. Select **Create Database** → **Blob**.
+4. Select **Continue**.
+5. Set **Access** to **Private**.
+6. Create the store and connect it to this project.
+7. Open the project **Settings** → **Environment Variables** and confirm that Vercel added `BLOB_READ_WRITE_TOKEN`.
 
-Private Blob is the recommended mode because the stored JSON contains private HMAC identity keys.
+Private Blob is required because the stored JSON contains private HMAC identity keys. The app uses the Blob store for sanitized publication snapshots and the current-publication pointer; it does not publish the original upload or raw `EMPLID` values.
 
-### 4. Add environment variables
+If the Blob store was created at the team level instead of from this project, use the store's **Connect to Project** action. A connected store is what adds `BLOB_READ_WRITE_TOKEN` to the project.
+
+### 3. Add the application environment variables
 
 Open the project, then **Settings** → **Environment Variables**.
 
-Add these variables for **Production**:
+For each row below, select **Production**. Mark the three secret values as sensitive if the dashboard offers that option.
 
 | Key | Value |
 | --- | --- |
 | `ADMIN_USERNAME` | The admin username you want |
 | `ADMIN_PASSWORD` | A strong admin password |
-| `AUTH_SECRET` | A random secret, 16+ characters; 32+ recommended |
+| `AUTH_SECRET` | A random secret, at least 32 characters |
 | `FOTGS_BLOB_ACCESS` | `private` |
 
-`BLOB_READ_WRITE_TOKEN` should already exist after Blob is connected. If it does not, reconnect the Blob store to the project.
+Do not create a `NEXT_PUBLIC_` version of any of these variables. They are server-side secrets or server-side configuration.
 
-For preview deployments, add the same variables to **Preview** if you want uploads to work on preview URLs.
+`BLOB_READ_WRITE_TOKEN` should already exist after Blob is connected. If it does not, reconnect the Blob store to the project and check the Blob store's project connection. Do not paste a token into GitHub or into this README.
 
-### 5. Redeploy
+For each of `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `AUTH_SECRET`, and `FOTGS_BLOB_ACCESS`, also select **Preview** if you want to test uploads on Vercel preview URLs. The Blob connection should provide `BLOB_READ_WRITE_TOKEN` for the preview deployment as well. Do not use production data from a preview upload unless that is intentional; a separate Blob store and separate admin credentials are safer for preview testing.
 
-Environment variable changes do not modify already-built deployments.
+### 4. Redeploy after configuration
+
+Environment variable and storage changes do not modify an already-built deployment.
 
 1. Open **Deployments** in the Vercel project.
-2. Select the latest deployment.
-3. Select **Redeploy**.
-4. Wait for the production deployment to finish.
+2. Open the most recent production deployment.
+3. Select the three-dot menu → **Redeploy**.
+4. Wait for the deployment to finish with a **Ready** status.
 
-### 6. Publish data
+### 5. Publish the first dashboard
 
 1. Open `https://<your-project-domain>/admin/login`.
 2. Sign in with `ADMIN_USERNAME` and `ADMIN_PASSWORD`.
-3. Upload the OBIEE export.
+3. Upload the OBIEE `.csv` or `.xlsx` export. The upload must contain the exact required columns listed above, including `EMPLID`.
 4. After publish, open `https://<your-project-domain>/view`.
-5. Link your website to `/view`.
+5. Confirm the dashboard has the expected row count and filters, and confirm that no WSU ID/`EMPLID` column is visible.
+6. Link your website to `https://<your-project-domain>/view`.
 
 Each upload creates a snapshot at `/s/<slug>` and updates `/view` to the newest upload.
 
-## CLI equivalents
+## Optional Vercel CLI
 
-After installing Vercel CLI:
+The dashboard workflow above does not require the CLI. For command-line deployment, environment inspection, or pulling Vercel-managed variables, install the current CLI first:
 
 ```bash
+npm i -g vercel
 vercel login
 vercel link
-vercel env add ADMIN_USERNAME production
-vercel env add ADMIN_PASSWORD production
-vercel env add AUTH_SECRET production
-vercel env add FOTGS_BLOB_ACCESS production
-vercel env pull .env.local
-vercel --prod
+vercel env ls production
+vercel env pull .env.local --environment=production
 ```
 
-Create and connect the private Blob store from the Vercel dashboard as described above so the
-project receives `BLOB_READ_WRITE_TOKEN`.
+Use `vercel env pull` only on a machine where the resulting `.env.local` is protected and ignored by Git. Environment changes still require a new deployment before the hosted app sees them.
+
+## Troubleshooting
+
+- **`BLOB_READ_WRITE_TOKEN` is missing**: reconnect the private Blob store to this Vercel project, then redeploy.
+- **Login fails**: verify `ADMIN_USERNAME` and `ADMIN_PASSWORD` are set for the deployment's environment, then redeploy.
+- **Upload fails with an `AUTH_SECRET` message**: add `AUTH_SECRET` with at least 32 characters and redeploy.
+- **The dashboard says no publication is available**: sign in at `/admin/login` and publish an export; `/view` is empty until the first successful upload.
+- **A preview behaves differently from production**: verify that the required variables are scoped to **Preview** as well as **Production**, and check whether the preview is connected to the intended Blob store.
