@@ -30,14 +30,9 @@ function canUseLocalStore(): boolean {
   return process.env.NODE_ENV !== "production" && !process.env.BLOB_READ_WRITE_TOKEN?.trim();
 }
 
-function requireBlobToken(): string {
-  const t = process.env.BLOB_READ_WRITE_TOKEN?.trim();
-  if (!t) {
-    throw new FotgsStorageError(
-      "BLOB_READ_WRITE_TOKEN is not set. Connect a Vercel Blob store or use local development."
-    );
-  }
-  return t;
+function blobAuthOptions(): { token?: string } {
+  const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
+  return token ? { token } : {};
 }
 
 function validateSlug(slug: string): boolean {
@@ -90,10 +85,9 @@ async function listLocalSlugs(): Promise<string[]> {
 }
 
 async function persistBlobPublication(body: StoredFotgsPublication): Promise<void> {
-  const token = requireBlobToken();
   await put(publicationPathname(body.slug), JSON.stringify(body), {
     access: getBlobAccessMode(),
-    token,
+    ...blobAuthOptions(),
     addRandomSuffix: false,
     allowOverwrite: true,
     contentType: "application/json",
@@ -101,11 +95,10 @@ async function persistBlobPublication(body: StoredFotgsPublication): Promise<voi
 }
 
 async function persistBlobCurrent(slug: string): Promise<void> {
-  const token = requireBlobToken();
   const body: CurrentViewBlob = { slug, updated_at: new Date().toISOString() };
   await put(CURRENT_VIEW_PATHNAME, JSON.stringify(body), {
     access: getBlobAccessMode(),
-    token,
+    ...blobAuthOptions(),
     addRandomSuffix: false,
     allowOverwrite: true,
     contentType: "application/json",
@@ -114,11 +107,10 @@ async function persistBlobCurrent(slug: string): Promise<void> {
 
 async function getStoredBlobPublication(slug: string): Promise<StoredFotgsPublication | null> {
   if (!validateSlug(slug)) return null;
-  const token = requireBlobToken();
   try {
     const res = await get(publicationPathname(slug), {
       access: getBlobAccessMode(),
-      token,
+      ...blobAuthOptions(),
       useCache: false,
     });
     if (!res?.stream) return null;
@@ -237,10 +229,8 @@ async function getLatestPublicationSlug(): Promise<string | null> {
       .sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at))[0]?.slug ?? null;
   }
 
-  const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
-  if (!token) return null;
   try {
-    const rows = await list({ token, prefix: `${BLOB_PREFIX}/`, limit: 1000 });
+    const rows = await list({ ...blobAuthOptions(), prefix: `${BLOB_PREFIX}/`, limit: 1000 });
     const latest = rows.blobs
       .filter((blob) => {
         const name = blob.pathname.slice(`${BLOB_PREFIX}/`.length);
@@ -266,12 +256,10 @@ export async function getCurrentViewSlug(): Promise<string | null> {
     }
   }
 
-  const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
-  if (!token) return null;
   try {
     const res = await get(CURRENT_VIEW_PATHNAME, {
       access: getBlobAccessMode(),
-      token,
+      ...blobAuthOptions(),
       useCache: false,
     });
     if (!res?.stream) return getLatestPublicationSlug();
@@ -313,8 +301,7 @@ export async function deletePublication(slug: string): Promise<boolean> {
     return true;
   }
 
-  const token = requireBlobToken();
-  await del(publicationPathname(slug), { token });
+  await del(publicationPathname(slug), { ...blobAuthOptions() });
   return true;
 }
 
@@ -328,11 +315,9 @@ export async function listPublicationSummaries(): Promise<FotgsPublicationSummar
       .sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at));
   }
 
-  const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
-  if (!token) return [];
   let rows;
   try {
-    rows = await list({ token, prefix: `${BLOB_PREFIX}/`, limit: 1000 });
+    rows = await list({ ...blobAuthOptions(), prefix: `${BLOB_PREFIX}/`, limit: 1000 });
   } catch {
     return [];
   }

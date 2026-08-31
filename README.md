@@ -24,7 +24,7 @@ The first worksheet or CSV header must include these exact fields:
 
 ## Hosting requirement
 
-This app is intended to run on Vercel. Do not rely on the local filesystem for published data: Vercel deployments are not a durable filesystem. Production requires a connected **private Vercel Blob** store and the `BLOB_READ_WRITE_TOKEN` variable that Vercel provides when the store is connected.
+This app is intended to run on Vercel. Do not rely on the local filesystem for published data: Vercel deployments are not a durable filesystem. Production requires a connected **private Vercel Blob** store. Vercel may provide short-lived Blob/OIDC credentials or the `BLOB_READ_WRITE_TOKEN` variable, depending on the store connection; the app supports either mode.
 
 The repository contains local-development fallback code for maintenance and testing, but that is not the production storage path and is not part of the Vercel setup.
 
@@ -55,11 +55,11 @@ The first deployment may show the public page with no publication until storage 
 4. Select **Continue**.
 5. Set **Access** to **Private**.
 6. Create the store and connect it to this project.
-7. Open the project **Settings** → **Environment Variables** and confirm that Vercel added `BLOB_READ_WRITE_TOKEN`.
+7. Open the project **Settings** → **Environment Variables** and confirm the Blob connection is present. A traditional connection adds `BLOB_READ_WRITE_TOKEN`; newer connections may use Vercel-managed Blob/OIDC credentials instead.
 
 Private Blob is required because the stored JSON contains private HMAC identity keys. The app uses the Blob store for sanitized publication snapshots and the current-publication pointer; it does not publish the original upload or raw `EMPLID` values.
 
-If the Blob store was created at the team level instead of from this project, use the store's **Connect to Project** action. A connected store is what adds `BLOB_READ_WRITE_TOKEN` to the project.
+If the Blob store was created at the team level instead of from this project, use the store's **Connect to Project** action. The project connection is what grants the deployed app access to the store.
 
 ### 3. Add the application environment variables
 
@@ -76,9 +76,9 @@ For each row below, select **Production**. Mark the three secret values as sensi
 
 Do not create a `NEXT_PUBLIC_` version of any of these variables. They are server-side secrets or server-side configuration.
 
-`BLOB_READ_WRITE_TOKEN` should already exist after Blob is connected. If it does not, reconnect the Blob store to the project and check the Blob store's project connection. Do not paste a token into GitHub or into this README.
+If Vercel creates `BLOB_READ_WRITE_TOKEN`, leave it managed by Vercel. If it does not appear because the store uses Vercel-managed Blob/OIDC credentials, do not manually invent a replacement; verify that the Blob store is connected to this project. Do not paste a token into GitHub or into this README.
 
-For each of `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `AUTH_SECRET`, and `FOTGS_BLOB_ACCESS`, also select **Preview** if you want to test uploads on Vercel preview URLs. The Blob connection should provide `BLOB_READ_WRITE_TOKEN` for the preview deployment as well. Do not use production data from a preview upload unless that is intentional; a separate Blob store and separate admin credentials are safer for preview testing.
+For each of `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `AUTH_SECRET`, and `FOTGS_BLOB_ACCESS`, also select **Preview** if you want to test uploads on Vercel preview URLs. Make sure the Blob store is connected for the Preview environment as well. Do not use production data from a preview upload unless that is intentional; a separate Blob store and separate admin credentials are safer for preview testing.
 
 ### 4. Redeploy after configuration
 
@@ -116,7 +116,7 @@ Use `vercel env pull` only on a machine where the resulting `.env.local` is prot
 
 ## Troubleshooting
 
-- **`BLOB_READ_WRITE_TOKEN` is missing**: reconnect the private Blob store to this Vercel project, then redeploy.
+- **Blob access fails**: reconnect the private Blob store to this Vercel project, verify the store is available to the deployment environment, then redeploy.
 - **Login fails**: verify `ADMIN_USERNAME` and `ADMIN_PASSWORD` are set for the deployment's environment, then redeploy.
 - **Upload fails with an `AUTH_SECRET` message**: add `AUTH_SECRET` with at least 32 characters and redeploy.
 - **The dashboard says no publication is available**: sign in at `/admin/login` and publish an export; `/view` is empty until the first successful upload.
