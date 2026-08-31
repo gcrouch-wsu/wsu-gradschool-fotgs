@@ -11,7 +11,7 @@ export default async function CurrentViewPage() {
     return (
       <main className="mx-auto max-w-3xl px-4 py-12">
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-950">
-          <h1 className="text-xl font-semibold">No FOTGS dashboard is published yet</h1>
+          <h1 className="text-xl font-semibold">No faculty dashboard is published yet</h1>
           <p className="mt-2 text-sm leading-relaxed">
             Sign in to admin and upload the first OBIEE export.
           </p>

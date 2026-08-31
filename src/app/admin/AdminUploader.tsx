@@ -54,7 +54,7 @@ export function AdminUploader() {
           <h2 className="text-base font-semibold text-wsu-gray-dark">Publish OBIEE export</h2>
           <p className="mt-1 text-sm leading-relaxed text-wsu-gray">
             Required upload columns: Updated on, EMPLID, names, degree, rank, track/status,
-            FOTGS status, appointment status, and research webpage. Upload `.csv` or `.xlsx`.
+            status, appointment status, and research webpage. Upload `.csv` or `.xlsx`.
           </p>
         </div>
         <FileSpreadsheet aria-hidden="true" className="hidden size-6 text-wsu-crimson sm:block" />
@@ -65,7 +65,7 @@ export function AdminUploader() {
           Dashboard title
           <input
             name="title"
-            defaultValue="Faculty Of The Graduate School FOTGS"
+            defaultValue="Faculty Of The Graduate School"
             maxLength={200}
             className="mt-1.5 w-full rounded-md border border-wsu-gray/25 bg-white px-3 py-2.5 text-base text-wsu-gray-dark shadow-sm focus:border-wsu-crimson focus:outline-none focus:ring-2 focus:ring-wsu-crimson/20"
           />

@@ -14,7 +14,7 @@ export function WsuHeader() {
       <div className="mx-auto flex max-w-[88rem] flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 lg:px-6">
         <div>
           <Link href="/view" className="text-lg font-semibold text-white hover:text-white/90">
-            Faculty Of The Graduate School FOTGS
+            Faculty Of The Graduate School
           </Link>
           <p className="text-xs font-medium uppercase text-white/75">
             Washington State University

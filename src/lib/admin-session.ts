@@ -44,17 +44,18 @@ function timingSafeEqualStr(a: string, b: string): boolean {
 }
 
 export function adminCredentialsOk(username: string, password: string): boolean {
-  const u = process.env.ADMIN_USERNAME?.trim();
+  const u = process.env.ADMIN_USERNAME?.trim().toLowerCase();
   const p = process.env.ADMIN_PASSWORD?.trim();
   if (!u || !p) return false;
-  return timingSafeEqualStr(username.trim(), u) && timingSafeEqualStr(password, p);
+  return timingSafeEqualStr(username.trim().toLowerCase(), u) && timingSafeEqualStr(password, p);
 }
 
 export function authEnvConfigured(): boolean {
+  const username = process.env.ADMIN_USERNAME?.trim() ?? "";
   return Boolean(
     process.env.AUTH_SECRET?.trim() &&
       process.env.AUTH_SECRET.trim().length >= MIN_SECRET_LEN &&
-      process.env.ADMIN_USERNAME?.trim() &&
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(username) &&
       process.env.ADMIN_PASSWORD?.trim()
   );
 }

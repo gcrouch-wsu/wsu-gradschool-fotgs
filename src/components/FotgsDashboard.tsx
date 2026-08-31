@@ -102,10 +102,6 @@ export function FotgsDashboard({ publication }: { publication: PublicFotgsPublic
     { label: "Total faculty", value: publication.records.length },
     { label: "Current", value: countFor(publication.summary.appointmentStatusCounts, "Current") },
     { label: "Ended", value: countFor(publication.summary.appointmentStatusCounts, "Ended") },
-    {
-      label: "Missing end date",
-      value: countFor(publication.summary.appointmentStatusCounts, "Missing End Date"),
-    },
     { label: "Degree incomplete", value: publication.summary.workdayDegreeIncompleteCount },
     { label: "Rank incomplete", value: publication.summary.workdayRankIncompleteCount },
     { label: "Research links", value: publication.summary.researchWebpageCount },
@@ -138,7 +134,7 @@ export function FotgsDashboard({ publication }: { publication: PublicFotgsPublic
         </div>
       </div>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {metrics.map((metric) => (
           <div key={metric.label} className="rounded-lg border border-wsu-gray/15 bg-white px-4 py-3 shadow-sm">
             <p className="text-xs font-semibold uppercase text-wsu-gray">{metric.label}</p>
@@ -182,7 +178,7 @@ export function FotgsDashboard({ publication }: { publication: PublicFotgsPublic
             </div>
           </label>
           <label className="block text-sm font-medium text-wsu-gray-dark">
-            FOTGS status
+            Status
             <select value={fotgsStatus} onChange={(e) => setFotgsStatus(e.target.value)} className={selectClassName()}>
               <option value={ALL}>All</option>
               {options.fotgsStatuses.map((status) => (
@@ -262,9 +258,8 @@ export function FotgsDashboard({ publication }: { publication: PublicFotgsPublic
                 <th className="min-w-[15rem] px-3 py-2.5">Highest degree</th>
                 <th className="min-w-[10rem] px-3 py-2.5">Rank</th>
                 <th className="min-w-[14rem] px-3 py-2.5">Track/status</th>
-                <th className="min-w-[12rem] px-3 py-2.5">FOTGS status</th>
+                <th className="min-w-[12rem] px-3 py-2.5">Status</th>
                 <th className="min-w-[10rem] px-3 py-2.5">Appointment</th>
-                <th className="whitespace-nowrap px-3 py-2.5">Research</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-wsu-gray/10 bg-white">
@@ -283,13 +278,26 @@ export function FotgsDashboard({ publication }: { publication: PublicFotgsPublic
 }
 
 function FacultyRow({ record }: { record: FotgsFacultyRecordPublic }) {
+  const canonicalName = [record.lastName, record.firstName].filter(Boolean).join(", ") || record.displayName;
+
   return (
     <tr className="align-top hover:bg-wsu-cream/45">
       <td className="px-3 py-3">
-        <p className="font-semibold text-wsu-gray-dark">{record.displayName}</p>
-        <p className="mt-0.5 text-xs text-wsu-gray">
-          {[record.lastName, record.firstName].filter(Boolean).join(", ")}
-        </p>
+        <p className="font-semibold text-wsu-gray-dark">{canonicalName}</p>
+        {record.researchWebpage ? (
+          <a
+            href={record.researchWebpage}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Research Webpage for ${canonicalName}`}
+            className="mt-1 inline-flex max-w-full items-start gap-1.5 break-all text-xs font-medium leading-relaxed text-wsu-crimson hover:underline"
+          >
+            <span>Research Webpage: {record.researchWebpage}</span>
+            <ExternalLink aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
+          </a>
+        ) : (
+          <span className="mt-1 block text-xs text-wsu-gray">Blank</span>
+        )}
       </td>
       <td className="px-3 py-3 text-wsu-gray-dark">
         <WorkdayValue value={record.highestDegree} incomplete={record.workdayDegreeIncomplete} />
@@ -303,21 +311,6 @@ function FacultyRow({ record }: { record: FotgsFacultyRecordPublic }) {
         <span className={`inline-flex rounded-md px-2 py-1 text-xs font-semibold ${appointmentBadgeClass(record.appointmentStatus)}`}>
           {record.appointmentStatus || "Blank"}
         </span>
-      </td>
-      <td className="px-3 py-3">
-        {record.researchWebpage ? (
-          <a
-            href={record.researchWebpage}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-wsu-crimson hover:underline"
-          >
-            Open
-            <ExternalLink aria-hidden="true" className="size-3.5" />
-          </a>
-        ) : (
-          <span className="text-wsu-gray">Blank</span>
-        )}
       </td>
     </tr>
   );

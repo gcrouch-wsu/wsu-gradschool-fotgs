@@ -69,7 +69,7 @@ For each row below, select **Production**. Mark the three secret values as sensi
 
 | Key | Value |
 | --- | --- |
-| `ADMIN_USERNAME` | The admin username you want |
+| `ADMIN_USERNAME` | The admin email address you want |
 | `ADMIN_PASSWORD` | A strong admin password |
 | `AUTH_SECRET` | A random secret, at least 32 characters |
 | `FOTGS_BLOB_ACCESS` | `private` |

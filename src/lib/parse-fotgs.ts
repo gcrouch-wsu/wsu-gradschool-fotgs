@@ -151,10 +151,8 @@ function personKeyFromEmplid(emplid: string, identitySecret: string): string {
   return createHmac("sha256", secret).update(emplid.trim()).digest("hex");
 }
 
-function displayName(firstName: string, lastName: string, preferredName: string): string {
-  const preferred = preferredName.trim();
-  if (preferred) return preferred;
-  return [firstName.trim(), lastName.trim()].filter(Boolean).join(" ").trim() || "Unnamed faculty";
+function displayName(firstName: string, lastName: string): string {
+  return [lastName.trim(), firstName.trim()].filter(Boolean).join(", ") || "Unnamed faculty";
 }
 
 function uniqueSorted(values: Iterable<string>): string[] {
@@ -228,7 +226,7 @@ export async function parseFotgsWorkbook(
       lastName,
       firstName,
       preferredName,
-      displayName: displayName(firstName, lastName, preferredName),
+      displayName: displayName(firstName, lastName),
       highestDegree,
       rank,
       trackAndStatus,

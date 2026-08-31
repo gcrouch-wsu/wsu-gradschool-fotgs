@@ -33,11 +33,13 @@ export function LoginForm() {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <label className="block text-sm font-medium text-wsu-gray-dark">
-        Username
+        Email address
         <input
+          type="email"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          autoComplete="username"
+          autoComplete="email"
+          inputMode="email"
           className="mt-1.5 w-full rounded-md border border-wsu-gray/25 bg-white px-3 py-2.5 text-base text-wsu-gray-dark shadow-sm focus:border-wsu-crimson focus:outline-none focus:ring-2 focus:ring-wsu-crimson/20"
           required
         />
