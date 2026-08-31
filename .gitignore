@@ -1,0 +1,13 @@
+.next/
+node_modules/
+out/
+build/
+dist/
+.env*.local
+.vercel/
+.fogs-local-store/
+.fotgs-local-store/
+*.csv
+*.xls
+*.xlsx
+*.tsbuildinfo
