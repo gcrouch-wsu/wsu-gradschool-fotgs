@@ -29,5 +29,5 @@ export default async function SnapshotPage({
   const { slug } = await params;
   const publication = await getPublicationBySlug(slug);
   if (!publication) notFound();
-  return <FotgsDashboard publication={toPublicPayload(publication)} isSnapshot={true} />;
+  return <FotgsDashboard publication={toPublicPayload(publication)} />;
 }
