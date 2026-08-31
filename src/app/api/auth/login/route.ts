@@ -15,7 +15,7 @@ import {
 export const runtime = "nodejs";
 
 const bodySchema = z.object({
-  username: z.string().email().max(200),
+  username: z.string().min(1).max(200),
   password: z.string().min(1).max(500),
 });
 

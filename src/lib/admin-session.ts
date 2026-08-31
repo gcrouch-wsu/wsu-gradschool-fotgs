@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
 
 export const ADMIN_SESSION_COOKIE = "fotgs_admin";
@@ -33,29 +34,23 @@ export async function verifyAdminSession(token: string | undefined): Promise<boo
 }
 
 function timingSafeEqualStr(a: string, b: string): boolean {
-  const max = Math.max(a.length, b.length, 1);
-  let out = a.length === b.length ? 0 : 1;
-  for (let i = 0; i < max; i++) {
-    const ca = i < a.length ? a.charCodeAt(i) : 0;
-    const cb = i < b.length ? b.charCodeAt(i) : 0;
-    out |= ca ^ cb;
-  }
-  return out === 0;
+  const hashA = createHash("sha256").update(a).digest();
+  const hashB = createHash("sha256").update(b).digest();
+  return timingSafeEqual(hashA, hashB);
 }
 
 export function adminCredentialsOk(username: string, password: string): boolean {
-  const u = process.env.ADMIN_USERNAME?.trim().toLowerCase();
+  const u = process.env.ADMIN_USERNAME?.trim();
   const p = process.env.ADMIN_PASSWORD?.trim();
   if (!u || !p) return false;
-  return timingSafeEqualStr(username.trim().toLowerCase(), u) && timingSafeEqualStr(password, p);
+  return timingSafeEqualStr(username.trim(), u) && timingSafeEqualStr(password, p);
 }
 
 export function authEnvConfigured(): boolean {
-  const username = process.env.ADMIN_USERNAME?.trim() ?? "";
   return Boolean(
     process.env.AUTH_SECRET?.trim() &&
       process.env.AUTH_SECRET.trim().length >= MIN_SECRET_LEN &&
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(username) &&
+      process.env.ADMIN_USERNAME?.trim() &&
       process.env.ADMIN_PASSWORD?.trim()
   );
 }

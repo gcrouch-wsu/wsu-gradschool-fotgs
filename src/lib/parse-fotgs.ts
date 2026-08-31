@@ -26,6 +26,7 @@ const WORKDAY_INCOMPLETE = "Workday Data Incomplete";
 function cellToString(v: unknown): string {
   if (v == null || v === "") return "";
   if (v instanceof Date) {
+    if (Number.isNaN(v.getTime())) return "";
     const y = v.getUTCFullYear();
     const m = String(v.getUTCMonth() + 1).padStart(2, "0");
     const d = String(v.getUTCDate()).padStart(2, "0");
@@ -151,8 +152,10 @@ function personKeyFromEmplid(emplid: string, identitySecret: string): string {
   return createHmac("sha256", secret).update(emplid.trim()).digest("hex");
 }
 
-function displayName(firstName: string, lastName: string): string {
-  return [lastName.trim(), firstName.trim()].filter(Boolean).join(", ") || "Unnamed faculty";
+function displayName(firstName: string, lastName: string, preferredName: string): string {
+  const preferred = preferredName.trim();
+  if (preferred) return preferred;
+  return [firstName.trim(), lastName.trim()].filter(Boolean).join(" ").trim() || "Unnamed faculty";
 }
 
 function uniqueSorted(values: Iterable<string>): string[] {
@@ -226,15 +229,15 @@ export async function parseFotgsWorkbook(
       lastName,
       firstName,
       preferredName,
-      displayName: displayName(firstName, lastName),
+      displayName: displayName(firstName, lastName, preferredName),
       highestDegree,
       rank,
       trackAndStatus,
       fotgsStatus,
       appointmentStatus,
       researchWebpage,
-      workdayDegreeIncomplete: highestDegree.trim() === WORKDAY_INCOMPLETE,
-      workdayRankIncomplete: rank.trim() === WORKDAY_INCOMPLETE,
+      workdayDegreeIncomplete: highestDegree.trim().toLowerCase() === WORKDAY_INCOMPLETE.toLowerCase(),
+      workdayRankIncomplete: rank.trim().toLowerCase() === WORKDAY_INCOMPLETE.toLowerCase(),
     });
   }
 

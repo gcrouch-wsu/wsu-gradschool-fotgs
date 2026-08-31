@@ -3,8 +3,11 @@ import { WsuHeader } from "@/components/WsuHeader";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Faculty Of The Graduate School",
-  description: "Faculty Of The Graduate School appointment dashboard",
+  title: {
+    default: "Faculty Of The Graduate School (FOTGS) | Washington State University",
+    template: "%s | WSU Graduate School",
+  },
+  description: "Washington State University Faculty Of The Graduate School (FOTGS) appointment dashboard and faculty directory.",
 };
 
 export default function RootLayout({

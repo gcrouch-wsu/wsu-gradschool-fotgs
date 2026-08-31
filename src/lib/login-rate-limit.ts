@@ -10,9 +10,19 @@ function keyFromRequest(request: Request): string {
   return request.headers.get("x-real-ip")?.trim() || "unknown";
 }
 
+function cleanupExpired(now: number): void {
+  if (buckets.size < 1000) return;
+  for (const [k, v] of buckets.entries()) {
+    if (now - v.windowStart > WINDOW_MS) {
+      buckets.delete(k);
+    }
+  }
+}
+
 export function loginRateLimitExceeded(request: Request): boolean {
   const key = keyFromRequest(request);
   const now = Date.now();
+  cleanupExpired(now);
   const b = buckets.get(key);
   if (!b) return false;
   if (now - b.windowStart > WINDOW_MS) {
@@ -25,6 +35,7 @@ export function loginRateLimitExceeded(request: Request): boolean {
 export function recordLoginFailure(request: Request): void {
   const key = keyFromRequest(request);
   const now = Date.now();
+  cleanupExpired(now);
   const b = buckets.get(key);
   if (!b || now - b.windowStart > WINDOW_MS) {
     buckets.set(key, { fails: 1, windowStart: now });
