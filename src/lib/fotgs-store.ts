@@ -121,7 +121,10 @@ async function getStoredBlobPublication(slug: string): Promise<StoredFotgsPublic
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (/not found|404|NoSuchKey|does not exist/i.test(msg)) return null;
-    throw new FotgsStorageError(`Failed to load FOTGS publication ${slug}`, { cause: e });
+    throw new FotgsStorageError(
+      `Failed to load Faculty of the Graduate School publication ${slug}`,
+      { cause: e }
+    );
   }
 }
 

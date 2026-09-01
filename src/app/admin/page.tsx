@@ -25,7 +25,7 @@ export default async function AdminPage() {
         <div>
           <h1 className="text-2xl font-semibold text-wsu-gray-dark">Admin</h1>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-wsu-gray">
-            Upload a trusted OBIEE export and publish a sanitized FOTGS dashboard. EMPLID is used only
+            Upload a trusted OBIEE export and publish a sanitized Faculty of the Graduate School dashboard. EMPLID is used only
             to create a private import key and is removed from the public view.
           </p>
         </div>

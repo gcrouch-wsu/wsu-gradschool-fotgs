@@ -52,7 +52,7 @@ export async function POST(request: Request) {
   const { username, password } = parsed.data;
   if (!adminCredentialsOk(username, password)) {
     recordLoginFailure(request);
-    return NextResponse.json({ error: "Invalid username or password" }, { status: 401 });
+    return NextResponse.json({ error: "Invalid email address or password" }, { status: 401 });
   }
 
   clearLoginFailures(request);

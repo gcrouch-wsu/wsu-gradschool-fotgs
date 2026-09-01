@@ -139,7 +139,7 @@ export function AdminUploader() {
           Dashboard title
           <input
             name="title"
-            defaultValue="Faculty Of The Graduate School FOTGS"
+            defaultValue="Faculty of the Graduate School"
             maxLength={200}
             className="mt-1.5 w-full rounded-md border border-wsu-gray/25 bg-white px-3 py-2 text-sm text-wsu-gray-dark shadow-sm focus:border-wsu-crimson focus:outline-none focus:ring-2 focus:ring-wsu-crimson/20"
           />

@@ -1,6 +1,6 @@
-# Faculty Of The Graduate School FOTGS dashboard
+# Faculty of the Graduate School dashboard
 
-Next.js app for publishing Faculty Of The Graduate School FOTGS OBIEE exports to a read-only dashboard.
+Next.js app for publishing Faculty of the Graduate School OBIEE exports to a read-only dashboard.
 
 The upload may contain WSU ID / `EMPLID`. The app uses it only on the server to create a private HMAC identity key for stable import matching. `EMPLID` is not stored in the public payload and is not rendered on `/view` or `/s/<slug>`.
 

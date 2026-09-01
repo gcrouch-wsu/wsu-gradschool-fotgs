@@ -2,28 +2,44 @@
 
 @theme {
   --color-wsu-crimson: #981e32;
-  --color-wsu-crimson-dark: #7a1828;
-  --color-wsu-red-soft: #f7e7ea;
-  --color-wsu-gray: #5e6a71;
-  --color-wsu-gray-dark: #363b3f;
-  --color-wsu-cream: #f7f4f1;
+  --color-wsu-crimson-dark: #6f1523;
+  --color-wsu-red-soft: #f8ecef;
+  --color-wsu-gray: #5c666d;
+  --color-wsu-gray-dark: #211b1e;
+  --color-wsu-cream: #faf8f9;
+  --color-wsu-stone: #f4f0f1;
   --color-wsu-white: #ffffff;
   --color-wsu-gold: #ffc61e;
   --color-fotgs-green: #22745a;
   --color-fotgs-green-soft: #e7f3ee;
   --color-fotgs-amber-soft: #fff6d8;
-  --font-sans: ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-wsu-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-wsu-serif), Georgia, serif;
+  --font-mono: var(--font-wsu-mono), ui-monospace, monospace;
 }
 
 :root {
   --background: var(--color-wsu-cream);
   --foreground: var(--color-wsu-gray-dark);
+  --line: #e5e1e2;
+  --line-strong: #d8d2d4;
+  --shadow-sm: 0 1px 2px rgb(33 27 30 / 5%), 0 2px 5px rgb(33 27 30 / 4%);
+  --shadow-md: 0 8px 22px rgb(33 27 30 / 8%), 0 2px 7px rgb(33 27 30 / 5%);
+}
+
+html {
+  background: var(--background);
 }
 
 body {
   min-height: 100vh;
   background: var(--color-wsu-cream);
   color: var(--color-wsu-gray-dark);
+  font-family: var(--font-wsu-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+h1 {
+  font-family: var(--font-wsu-serif), Georgia, serif;
 }
 
 button,
@@ -35,4 +51,13 @@ select {
 :focus-visible {
   outline: 2px solid var(--color-wsu-crimson);
   outline-offset: 2px;
+}
+
+::selection {
+  background: rgb(152 30 50 / 18%);
+}
+
+.faculty-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 18rem;
 }

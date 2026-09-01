@@ -14,7 +14,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { formatDashboardDate } from "@/components/FotgsDashboard";
+import { formatDashboardDate } from "@/lib/dashboard-ui";
 import type { FotgsPublicationSummary } from "@/lib/types";
 
 export function AdminPublicationList({

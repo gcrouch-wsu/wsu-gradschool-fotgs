@@ -44,7 +44,7 @@ export async function POST(request: Request) {
   const title =
     typeof titleRaw === "string" && titleRaw.trim()
       ? titleRaw.trim().slice(0, 200)
-      : "Faculty Of The Graduate School FOTGS";
+      : "Faculty of the Graduate School";
 
   let data;
   try {

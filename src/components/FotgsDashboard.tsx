@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -11,6 +11,11 @@ import {
   RotateCcw,
   Search,
 } from "lucide-react";
+import {
+  formatDashboardDate,
+  formatPublicTitle,
+  type DashboardSearchParams,
+} from "@/lib/dashboard-ui";
 import type { FotgsFacultyRecordPublic, PublicFotgsPublication } from "@/lib/types";
 
 const ALL = "__all__";
@@ -19,49 +24,49 @@ const COMPLETE = "__complete__";
 
 type SortField = "name" | "degree" | "rank" | "track" | "fotgs" | "appointment";
 type SortDirection = "asc" | "desc";
+type MetricFilter =
+  | "all"
+  | "current"
+  | "needs_review"
+  | "missing_end"
+  | "degree_inc"
+  | "rank_inc"
+  | "research";
 
-export function formatDashboardDate(raw: string | null | undefined, includeTime = false): string {
-  if (!raw) return "Blank";
-  const trimmed = String(raw).trim();
-  if (!trimmed) return "Blank";
+function firstParam(params: DashboardSearchParams | undefined, key: string): string {
+  const value = params?.[key];
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
 
-  const match = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
-  let d: Date;
-  if (match) {
-    const year = parseInt(match[1], 10);
-    const month = parseInt(match[2], 10) - 1;
-    const day = parseInt(match[3], 10);
-    const hour = match[4] ? parseInt(match[4], 10) : 0;
-    const minute = match[5] ? parseInt(match[5], 10) : 0;
-    const second = match[6] ? parseInt(match[6], 10) : 0;
-    if (hour === 0 && minute === 0 && second === 0 && !trimmed.includes("T")) {
-      d = new Date(year, month, day);
-    } else {
-      d = new Date(trimmed);
-    }
-  } else {
-    d = new Date(trimmed);
-  }
+function allowedParam(
+  params: DashboardSearchParams | undefined,
+  key: string,
+  allowed: readonly string[],
+  fallback = ALL
+): string {
+  const value = firstParam(params, key);
+  return allowed.includes(value) ? value : fallback;
+}
 
-  if (Number.isNaN(d.getTime())) return trimmed;
+function completionParam(params: DashboardSearchParams | undefined, key: string): string {
+  const value = firstParam(params, key);
+  if (value === "complete") return COMPLETE;
+  if (value === "incomplete") return INCOMPLETE;
+  return ALL;
+}
 
-  const hasTime = d.getHours() !== 0 || d.getMinutes() !== 0;
+function completionQueryValue(value: string): string {
+  if (value === COMPLETE) return "complete";
+  if (value === INCOMPLETE) return "incomplete";
+  return "";
+}
 
-  if (includeTime && hasTime) {
-    return d.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  }
-
-  return d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+function isNeedsReview(record: FotgsFacultyRecordPublic): boolean {
+  return (
+    record.appointmentStatus.trim().toLowerCase() === "missing end date" ||
+    record.workdayDegreeIncomplete ||
+    record.workdayRankIncomplete
+  );
 }
 
 function countFor(counts: Record<string, number>, key: string): number {
@@ -92,26 +97,58 @@ function WorkdayValue({ value, incomplete }: { value: string; incomplete: boolea
 }
 
 function selectClassName() {
-  return "mt-1.5 w-full rounded-md border border-wsu-gray/25 bg-white px-3 py-2 text-sm text-wsu-gray-dark shadow-sm focus:border-wsu-crimson focus:outline-none focus:ring-2 focus:ring-wsu-crimson/20";
+  return "mt-1.5 min-h-10 w-full rounded-md border border-wsu-gray/25 bg-white px-3 py-2 text-sm text-wsu-gray-dark shadow-sm focus:border-wsu-crimson focus:outline-none focus:ring-2 focus:ring-wsu-crimson/20";
 }
 
-export function FotgsDashboard({ publication }: { publication: PublicFotgsPublication }) {
-  const [query, setQuery] = useState("");
-  const [appointmentStatus, setAppointmentStatus] = useState(ALL);
-  const [fotgsStatus, setFotgsStatus] = useState(ALL);
-  const [trackStatus, setTrackStatus] = useState(ALL);
-  const [degreeStatus, setDegreeStatus] = useState(ALL);
-  const [rankStatus, setRankStatus] = useState(ALL);
-  const [onlyWithResearch, setOnlyWithResearch] = useState(false);
+function SortableColumnHeader({
+  field,
+  label,
+  minWidth,
+  sortField,
+  sortDirection,
+  onSort,
+}: {
+  field: SortField;
+  label: string;
+  minWidth?: string;
+  sortField: SortField;
+  sortDirection: SortDirection;
+  onSort: (field: SortField) => void;
+}) {
+  const isActive = sortField === field;
+  return (
+    <th
+      scope="col"
+      aria-sort={isActive ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}
+      className={`px-3 py-2.5 ${minWidth ?? ""}`}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(field)}
+        className="group inline-flex items-center gap-1 text-xs font-semibold uppercase text-wsu-gray-dark hover:text-wsu-crimson focus:outline-none"
+      >
+        <span>{label}</span>
+        {isActive ? (
+          sortDirection === "asc" ? (
+            <ArrowUp aria-hidden="true" className="size-3 text-wsu-crimson" />
+          ) : (
+            <ArrowDown aria-hidden="true" className="size-3 text-wsu-crimson" />
+          )
+        ) : (
+          <ArrowUpDown aria-hidden="true" className="size-3 text-wsu-gray/40 group-hover:text-wsu-gray" />
+        )}
+      </button>
+    </th>
+  );
+}
 
-  // Sorting
-  const [sortField, setSortField] = useState<SortField>("name");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
-
-  // Pagination
-  const [pageSize, setPageSize] = useState<number>(100);
-  const [currentPage, setCurrentPage] = useState<number>(1);
-
+export function FotgsDashboard({
+  publication,
+  initialSearchParams,
+}: {
+  publication: PublicFotgsPublication;
+  initialSearchParams?: DashboardSearchParams;
+}) {
   const options = useMemo(
     () => ({
       appointmentStatuses: unique(publication.records.map((r) => r.appointmentStatus)),
@@ -121,15 +158,69 @@ export function FotgsDashboard({ publication }: { publication: PublicFotgsPublic
     [publication.records]
   );
 
-  function handleSort(field: SortField) {
+  const [query, setQuery] = useState(() => firstParam(initialSearchParams, "q"));
+  const [appointmentStatus, setAppointmentStatus] = useState(() =>
+    allowedParam(initialSearchParams, "appointment", options.appointmentStatuses)
+  );
+  const [fotgsStatus, setFotgsStatus] = useState(() =>
+    allowedParam(initialSearchParams, "status", options.fotgsStatuses)
+  );
+  const [trackStatus, setTrackStatus] = useState(() =>
+    allowedParam(initialSearchParams, "track", options.trackStatuses)
+  );
+  const [degreeStatus, setDegreeStatus] = useState(() =>
+    completionParam(initialSearchParams, "degree")
+  );
+  const [rankStatus, setRankStatus] = useState(() =>
+    completionParam(initialSearchParams, "rank")
+  );
+  const [onlyWithResearch, setOnlyWithResearch] = useState(
+    () => firstParam(initialSearchParams, "research") === "1"
+  );
+  const [onlyNeedsReview, setOnlyNeedsReview] = useState(
+    () => firstParam(initialSearchParams, "review") === "1"
+  );
+  // Sorting
+  const [sortField, setSortField] = useState<SortField>(() =>
+    allowedParam(
+      initialSearchParams,
+      "sort",
+      ["name", "degree", "rank", "track", "fotgs", "appointment"],
+      "name"
+    ) as SortField
+  );
+  const [sortDirection, setSortDirection] = useState<SortDirection>(() =>
+    (allowedParam(initialSearchParams, "dir", ["asc", "desc"], "asc") as SortDirection)
+  );
+
+  // Pagination
+  const [pageSize, setPageSize] = useState<number>(() => {
+    const rawSize = firstParam(initialSearchParams, "size");
+    if (!rawSize) return 100;
+    const requested = Number(rawSize);
+    return [0, 50, 100, 250].includes(requested) ? requested : 100;
+  });
+  const [currentPage, setCurrentPage] = useState<number>(() => {
+    const requested = Number(firstParam(initialSearchParams, "page"));
+    return Number.isInteger(requested) && requested > 0 ? requested : 1;
+  });
+
+  const handleSort = useCallback((field: SortField) => {
     if (sortField === field) {
-      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+      setSortDirection((currentDirection) =>
+        currentDirection === "asc" ? "desc" : "asc"
+      );
     } else {
-      setSortField(field);
       setSortDirection("asc");
+      setSortField(field);
     }
     setCurrentPage(1);
-  }
+  }, [sortField]);
+
+  const needsReviewCount = useMemo(
+    () => publication.records.filter(isNeedsReview).length,
+    [publication.records]
+  );
 
   const runDatesDisplay = useMemo(() => {
     return (
@@ -178,6 +269,7 @@ export function FotgsDashboard({ publication }: { publication: PublicFotgsPublic
       if (rankStatus === INCOMPLETE && !record.workdayRankIncomplete) return false;
       if (rankStatus === COMPLETE && record.workdayRankIncomplete) return false;
       if (onlyWithResearch && !record.researchWebpage) return false;
+      if (onlyNeedsReview && !isNeedsReview(record)) return false;
       return true;
     });
 
@@ -211,6 +303,7 @@ export function FotgsDashboard({ publication }: { publication: PublicFotgsPublic
     appointmentStatus,
     degreeStatus,
     fotgsStatus,
+    onlyNeedsReview,
     onlyWithResearch,
     publication.records,
     query,
@@ -229,6 +322,41 @@ export function FotgsDashboard({ publication }: { publication: PublicFotgsPublic
     return filteredRecords.slice(start, start + pageSize);
   }, [filteredRecords, pageSize, validPage]);
 
+  const shareQueryString = useMemo(() => {
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("q", query.trim());
+    if (fotgsStatus !== ALL) params.set("status", fotgsStatus);
+    if (appointmentStatus !== ALL) params.set("appointment", appointmentStatus);
+    if (trackStatus !== ALL) params.set("track", trackStatus);
+    if (degreeStatus !== ALL) params.set("degree", completionQueryValue(degreeStatus));
+    if (rankStatus !== ALL) params.set("rank", completionQueryValue(rankStatus));
+    if (onlyWithResearch) params.set("research", "1");
+    if (onlyNeedsReview) params.set("review", "1");
+    if (sortField !== "name") params.set("sort", sortField);
+    if (sortDirection !== "asc") params.set("dir", sortDirection);
+    if (pageSize !== 100) params.set("size", String(pageSize));
+    if (validPage > 1) params.set("page", String(validPage));
+    return params.toString();
+  }, [
+    appointmentStatus,
+    degreeStatus,
+    fotgsStatus,
+    onlyNeedsReview,
+    onlyWithResearch,
+    pageSize,
+    query,
+    rankStatus,
+    sortDirection,
+    sortField,
+    trackStatus,
+    validPage,
+  ]);
+
+  useEffect(() => {
+    const nextUrl = `${window.location.pathname}${shareQueryString ? `?${shareQueryString}` : ""}${window.location.hash}`;
+    window.history.replaceState(window.history.state, "", nextUrl);
+  }, [shareQueryString]);
+
   const resetFilters = () => {
     setQuery("");
     setAppointmentStatus(ALL);
@@ -237,75 +365,73 @@ export function FotgsDashboard({ publication }: { publication: PublicFotgsPublic
     setDegreeStatus(ALL);
     setRankStatus(ALL);
     setOnlyWithResearch(false);
+    setOnlyNeedsReview(false);
     setCurrentPage(1);
   };
 
-  // Single-select card filter handler: clicking one sets ONLY that filter; clicking active again turns it off
-  const handleCardClick = (type: "all" | "current" | "ended" | "missing_end" | "degree_inc" | "rank_inc" | "research") => {
-    setCurrentPage(1);
+  const handleCardClick = (type: MetricFilter) => {
+    const isOnlyActive =
+      query === "" &&
+      fotgsStatus === ALL &&
+      trackStatus === ALL &&
+      ((type === "current" &&
+        appointmentStatus === "Current" &&
+        degreeStatus === ALL &&
+        rankStatus === ALL &&
+        !onlyWithResearch &&
+        !onlyNeedsReview) ||
+        (type === "needs_review" &&
+          appointmentStatus === ALL &&
+          degreeStatus === ALL &&
+          rankStatus === ALL &&
+          !onlyWithResearch &&
+          onlyNeedsReview) ||
+        (type === "missing_end" &&
+          appointmentStatus === "Missing End Date" &&
+          degreeStatus === ALL &&
+          rankStatus === ALL &&
+          !onlyWithResearch &&
+          !onlyNeedsReview) ||
+        (type === "degree_inc" &&
+          appointmentStatus === ALL &&
+          degreeStatus === INCOMPLETE &&
+          rankStatus === ALL &&
+          !onlyWithResearch &&
+          !onlyNeedsReview) ||
+        (type === "rank_inc" &&
+          appointmentStatus === ALL &&
+          degreeStatus === ALL &&
+          rankStatus === INCOMPLETE &&
+          !onlyWithResearch &&
+          !onlyNeedsReview) ||
+        (type === "research" &&
+          appointmentStatus === ALL &&
+          degreeStatus === ALL &&
+          rankStatus === ALL &&
+          onlyWithResearch &&
+          !onlyNeedsReview));
+
+    resetFilters();
+    if (type === "all" || isOnlyActive) return;
+
     switch (type) {
-      case "all":
-        resetFilters();
-        break;
       case "current":
-        if (appointmentStatus === "Current" && !onlyWithResearch && degreeStatus === ALL && rankStatus === ALL) {
-          setAppointmentStatus(ALL);
-        } else {
-          setAppointmentStatus("Current");
-          setDegreeStatus(ALL);
-          setRankStatus(ALL);
-          setOnlyWithResearch(false);
-        }
+        setAppointmentStatus("Current");
         break;
-      case "ended":
-        if (appointmentStatus === "Ended" && !onlyWithResearch && degreeStatus === ALL && rankStatus === ALL) {
-          setAppointmentStatus(ALL);
-        } else {
-          setAppointmentStatus("Ended");
-          setDegreeStatus(ALL);
-          setRankStatus(ALL);
-          setOnlyWithResearch(false);
-        }
+      case "needs_review":
+        setOnlyNeedsReview(true);
         break;
       case "missing_end":
-        if (appointmentStatus === "Missing End Date" && !onlyWithResearch && degreeStatus === ALL && rankStatus === ALL) {
-          setAppointmentStatus(ALL);
-        } else {
-          setAppointmentStatus("Missing End Date");
-          setDegreeStatus(ALL);
-          setRankStatus(ALL);
-          setOnlyWithResearch(false);
-        }
+        setAppointmentStatus("Missing End Date");
         break;
       case "degree_inc":
-        if (degreeStatus === INCOMPLETE && appointmentStatus === ALL && !onlyWithResearch && rankStatus === ALL) {
-          setDegreeStatus(ALL);
-        } else {
-          setDegreeStatus(INCOMPLETE);
-          setAppointmentStatus(ALL);
-          setRankStatus(ALL);
-          setOnlyWithResearch(false);
-        }
+        setDegreeStatus(INCOMPLETE);
         break;
       case "rank_inc":
-        if (rankStatus === INCOMPLETE && appointmentStatus === ALL && !onlyWithResearch && degreeStatus === ALL) {
-          setRankStatus(ALL);
-        } else {
-          setRankStatus(INCOMPLETE);
-          setAppointmentStatus(ALL);
-          setDegreeStatus(ALL);
-          setOnlyWithResearch(false);
-        }
+        setRankStatus(INCOMPLETE);
         break;
       case "research":
-        if (onlyWithResearch && appointmentStatus === ALL && degreeStatus === ALL && rankStatus === ALL) {
-          setOnlyWithResearch(false);
-        } else {
-          setOnlyWithResearch(true);
-          setAppointmentStatus(ALL);
-          setDegreeStatus(ALL);
-          setRankStatus(ALL);
-        }
+        setOnlyWithResearch(true);
         break;
     }
   };
@@ -317,6 +443,7 @@ export function FotgsDashboard({ publication }: { publication: PublicFotgsPublic
     degreeStatus === ALL &&
     rankStatus === ALL &&
     !onlyWithResearch &&
+    !onlyNeedsReview &&
     query === "";
 
   const metrics = [
@@ -333,10 +460,10 @@ export function FotgsDashboard({ publication }: { publication: PublicFotgsPublic
       onClick: () => handleCardClick("current"),
     },
     {
-      label: "Ended",
-      value: countFor(publication.summary.appointmentStatusCounts, "Ended"),
-      active: appointmentStatus === "Ended",
-      onClick: () => handleCardClick("ended"),
+      label: "Needs review",
+      value: needsReviewCount,
+      active: onlyNeedsReview,
+      onClick: () => handleCardClick("needs_review"),
     },
     {
       label: "Missing end date",
@@ -364,70 +491,44 @@ export function FotgsDashboard({ publication }: { publication: PublicFotgsPublic
     },
   ];
 
-  function SortableColumnHeader({
-    field,
-    label,
-    minWidth,
-  }: {
-    field: SortField;
-    label: string;
-    minWidth?: string;
-  }) {
-    const isActive = sortField === field;
-    return (
-      <th scope="col" className={`px-3 py-2.5 ${minWidth ?? ""}`}>
-        <button
-          type="button"
-          onClick={() => handleSort(field)}
-          className="group inline-flex items-center gap-1 text-xs font-semibold uppercase text-wsu-gray-dark hover:text-wsu-crimson focus:outline-none"
-        >
-          <span>{label}</span>
-          {isActive ? (
-            sortDirection === "asc" ? (
-              <ArrowUp aria-hidden="true" className="size-3 text-wsu-crimson" />
-            ) : (
-              <ArrowDown aria-hidden="true" className="size-3 text-wsu-crimson" />
-            )
-          ) : (
-            <ArrowUpDown aria-hidden="true" className="size-3 text-wsu-gray/40 group-hover:text-wsu-gray" />
-          )}
-        </button>
-      </th>
-    );
-  }
-
   return (
-    <main className="mx-auto max-w-[88rem] px-4 py-8 lg:px-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-wsu-gray-dark sm:text-3xl">
-          {publication.title}
+    <main className="mx-auto max-w-[90rem] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <div className="mb-5 border-t-2 border-wsu-crimson pt-4">
+        <p className="font-mono text-xs font-medium uppercase text-wsu-crimson">
+          Washington State University Graduate School
+        </p>
+        <h1 className="mt-1 text-3xl font-medium leading-tight text-wsu-gray-dark sm:text-4xl">
+          {formatPublicTitle(publication.title)}
         </h1>
-        <p className="mt-2 text-sm text-wsu-gray">
+        <p className="mt-2 text-sm leading-6 text-wsu-gray">
           Run date: {runDatesDisplay} · Published {publishedDisplay}
         </p>
       </div>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7" aria-label="Summary statistics">
+      <section className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:gap-3 xl:grid-cols-7" aria-label="Summary statistics">
         {metrics.map((metric) => (
           <button
             key={metric.label}
             type="button"
             onClick={metric.onClick}
-            className={`rounded-lg border bg-white px-4 py-3 text-left shadow-sm transition-all focus:outline-none ${
+            aria-pressed={metric.active}
+            className={`min-h-[5.25rem] rounded-lg border bg-white px-3 py-2.5 text-left shadow-sm transition-colors focus:outline-none sm:px-4 sm:py-3 ${
               metric.active
-                ? "border-wsu-crimson ring-2 ring-wsu-crimson/20 bg-wsu-red-soft/20"
-                : "border-wsu-gray/15 hover:border-wsu-gray/30 hover:bg-wsu-cream/30"
+                ? "border-wsu-crimson bg-wsu-red-soft/50 ring-2 ring-wsu-crimson/15"
+                : "border-wsu-gray/15 hover:border-wsu-crimson/50 hover:bg-wsu-cream"
             }`}
           >
-            <p className="text-xs font-semibold uppercase text-wsu-gray">{metric.label}</p>
-            <p className="mt-1 text-2xl font-semibold text-wsu-gray-dark">
+            <p className="text-[11px] font-semibold uppercase leading-4 text-wsu-gray sm:text-xs">
+              {metric.label}
+            </p>
+            <p className="mt-1 text-xl font-semibold text-wsu-gray-dark sm:text-2xl">
               {metric.value.toLocaleString()}
             </p>
           </button>
         ))}
       </section>
 
-      <details className="mt-5 rounded-lg border border-wsu-gray/15 bg-white px-4 py-3 shadow-sm">
+      <details className="mt-4 rounded-lg border border-wsu-gray/15 bg-white px-4 py-3 shadow-sm">
         <summary className="cursor-pointer text-sm font-semibold text-wsu-gray-dark">
           Dashboard notes
         </summary>
@@ -438,9 +539,15 @@ export function FotgsDashboard({ publication }: { publication: PublicFotgsPublic
             have an assignment in the myWSU Faculty List.
           </p>
           <p>
-            For `Highest Degree` and `Rank`, `Workday Data Incomplete` indicates that the relevant
-            source record needs follow-up by the faculty member, academic unit HR representative,
-            or graduate coordinator.
+            For <strong>Highest Degree</strong> and <strong>Rank</strong>, the label{" "}
+            <strong>Workday Data Incomplete</strong> indicates that the relevant source record
+            needs follow-up by the faculty member, academic unit HR representative, or graduate
+            coordinator.
+          </p>
+          <p>
+            <strong>Needs review</strong> includes each faculty record with a missing end date,
+            incomplete degree, or incomplete rank. A record is counted once even when more than
+            one item needs attention.
           </p>
         </div>
       </details>
@@ -454,6 +561,7 @@ export function FotgsDashboard({ publication }: { publication: PublicFotgsPublic
               <input
                 type="search"
                 value={query}
+                placeholder="Search names, degree, rank, track, or status"
                 onChange={(e) => {
                   setQuery(e.target.value);
                   setCurrentPage(1);
@@ -549,7 +657,7 @@ export function FotgsDashboard({ publication }: { publication: PublicFotgsPublic
           <button
             type="button"
             onClick={resetFilters}
-            className="inline-flex items-center justify-center gap-2 rounded-md border border-wsu-gray/25 bg-white px-3 py-2 text-sm font-semibold text-wsu-gray-dark shadow-sm hover:bg-wsu-cream"
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-wsu-gray/25 bg-white px-3 py-2 text-sm font-semibold text-wsu-gray-dark shadow-sm hover:border-wsu-crimson hover:text-wsu-crimson"
           >
             <RotateCcw aria-hidden="true" className="size-4" />
             Reset
@@ -558,46 +666,80 @@ export function FotgsDashboard({ publication }: { publication: PublicFotgsPublic
       </section>
 
       <section className="mt-5">
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-semibold text-wsu-gray-dark">
-            Faculty roster
-          </h2>
-          <div className="flex items-center gap-3 text-sm text-wsu-gray">
-            <span>
-              {filteredRecords.length.toLocaleString()} of {publication.records.length.toLocaleString()} rows
-            </span>
-            {filteredRecords.length > 50 ? (
-              <div className="flex items-center gap-1.5 text-xs">
-                <label htmlFor="per-page-select" className="text-wsu-gray">Page size:</label>
+        <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-wsu-gray-dark">Faculty roster</h2>
+            <p className="mt-0.5 text-sm text-wsu-gray" aria-live="polite">
+              {filteredRecords.length.toLocaleString()} of{" "}
+              {publication.records.length.toLocaleString()} records
+            </p>
+          </div>
+          {filteredRecords.length > 50 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="inline-flex min-h-10 items-center gap-2 rounded-md border border-wsu-gray/20 bg-white px-3 text-xs font-medium text-wsu-gray-dark shadow-xs">
+                Page size
                 <select
-                  id="per-page-select"
                   value={pageSize}
                   onChange={(e) => {
                     setPageSize(Number(e.target.value));
                     setCurrentPage(1);
                   }}
-                  className="rounded border border-wsu-gray/20 bg-white px-1.5 py-0.5 text-xs text-wsu-gray-dark shadow-xs"
+                  className="bg-white text-xs text-wsu-gray-dark focus:outline-none"
                 >
                   <option value={50}>50</option>
                   <option value={100}>100</option>
                   <option value={250}>250</option>
                   <option value={0}>All</option>
                 </select>
-              </div>
-            ) : null}
-          </div>
+              </label>
+            </div>
+          ) : null}
         </div>
 
-        <div className="overflow-x-auto rounded-lg border border-wsu-gray/15 bg-white shadow-sm">
+        <div className="mb-3 grid grid-cols-[1fr_auto] gap-2 md:hidden">
+          <label className="text-sm font-medium text-wsu-gray-dark">
+            Sort records
+            <select
+              value={sortField}
+              onChange={(e) => {
+                setSortField(e.target.value as SortField);
+                setCurrentPage(1);
+              }}
+              className={selectClassName()}
+            >
+              <option value="name">Name</option>
+              <option value="degree">Highest degree</option>
+              <option value="rank">Rank</option>
+              <option value="track">Track/status</option>
+              <option value="fotgs">Status</option>
+              <option value="appointment">Appointment</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            onClick={() => setSortDirection((direction) => (direction === "asc" ? "desc" : "asc"))}
+            className="mt-[1.625rem] inline-flex size-10 items-center justify-center rounded-md border border-wsu-gray/20 bg-white text-wsu-gray-dark shadow-xs hover:border-wsu-crimson hover:text-wsu-crimson"
+            aria-label={`Sort ${sortDirection === "asc" ? "descending" : "ascending"}`}
+            title={`Sort ${sortDirection === "asc" ? "descending" : "ascending"}`}
+          >
+            {sortDirection === "asc" ? (
+              <ArrowUp aria-hidden="true" className="size-4" />
+            ) : (
+              <ArrowDown aria-hidden="true" className="size-4" />
+            )}
+          </button>
+        </div>
+
+        <div className="hidden overflow-x-auto rounded-lg border border-wsu-gray/15 bg-white shadow-sm md:block">
           <table className="min-w-full divide-y divide-wsu-gray/15 text-left text-sm">
-            <thead className="bg-wsu-cream/85 text-xs font-semibold uppercase text-wsu-gray-dark">
+            <thead className="bg-wsu-stone/85 text-xs font-semibold uppercase text-wsu-gray-dark">
               <tr>
-                <SortableColumnHeader field="name" label="Name" minWidth="min-w-[16rem]" />
-                <SortableColumnHeader field="degree" label="Highest degree" minWidth="min-w-[15rem]" />
-                <SortableColumnHeader field="rank" label="Rank" minWidth="min-w-[10rem]" />
-                <SortableColumnHeader field="track" label="Track/status" minWidth="min-w-[14rem]" />
-                <SortableColumnHeader field="fotgs" label="Status" minWidth="min-w-[12rem]" />
-                <SortableColumnHeader field="appointment" label="Appointment" minWidth="min-w-[10rem]" />
+                <SortableColumnHeader field="name" label="Name" minWidth="min-w-[16rem]" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
+                <SortableColumnHeader field="degree" label="Highest degree" minWidth="min-w-[15rem]" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
+                <SortableColumnHeader field="rank" label="Rank" minWidth="min-w-[10rem]" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
+                <SortableColumnHeader field="track" label="Track/status" minWidth="min-w-[14rem]" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
+                <SortableColumnHeader field="fotgs" label="Status" minWidth="min-w-[12rem]" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
+                <SortableColumnHeader field="appointment" label="Appointment" minWidth="min-w-[10rem]" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
                 <th scope="col" className="whitespace-nowrap px-3 py-2.5 text-xs font-semibold uppercase text-wsu-gray-dark">
                   Research Website
                 </th>
@@ -618,8 +760,22 @@ export function FotgsDashboard({ publication }: { publication: PublicFotgsPublic
           ) : null}
         </div>
 
+        <div className="grid gap-2 md:hidden">
+          {paginatedRecords.map((record, index) => (
+            <FacultyCard
+              key={`${record.lastName}-${record.firstName}-${(validPage - 1) * (pageSize || filteredRecords.length) + index}`}
+              record={record}
+            />
+          ))}
+          {filteredRecords.length === 0 ? (
+            <p className="rounded-lg border border-wsu-gray/15 bg-white px-4 py-8 text-sm text-wsu-gray shadow-sm">
+              No records match the current filters.
+            </p>
+          ) : null}
+        </div>
+
         {totalPages > 1 && pageSize > 0 ? (
-          <div className="mt-3 flex items-center justify-between text-xs text-wsu-gray">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-wsu-gray">
             <span>
               Showing {((validPage - 1) * pageSize + 1).toLocaleString()}–{Math.min(validPage * pageSize, filteredRecords.length).toLocaleString()} of {filteredRecords.length.toLocaleString()}
             </span>
@@ -630,7 +786,7 @@ export function FotgsDashboard({ publication }: { publication: PublicFotgsPublic
                 onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
                 className="inline-flex items-center gap-1 rounded border border-wsu-gray/20 bg-white px-2 py-1 text-xs font-medium text-wsu-gray-dark shadow-xs hover:bg-wsu-cream disabled:opacity-40 disabled:hover:bg-white"
               >
-                <ChevronLeft className="size-3" />
+                <ChevronLeft aria-hidden="true" className="size-3" />
                 Previous
               </button>
               <span className="px-2 font-semibold text-wsu-gray-dark">
@@ -643,7 +799,7 @@ export function FotgsDashboard({ publication }: { publication: PublicFotgsPublic
                 className="inline-flex items-center gap-1 rounded border border-wsu-gray/20 bg-white px-2 py-1 text-xs font-medium text-wsu-gray-dark shadow-xs hover:bg-wsu-cream disabled:opacity-40 disabled:hover:bg-white"
               >
                 Next
-                <ChevronRight className="size-3" />
+                <ChevronRight aria-hidden="true" className="size-3" />
               </button>
             </div>
           </div>
@@ -656,7 +812,6 @@ export function FotgsDashboard({ publication }: { publication: PublicFotgsPublic
 function FacultyRow({ record }: { record: FotgsFacultyRecordPublic }) {
   return (
     <tr className="align-top hover:bg-wsu-cream/45">
-      {/* Name: Single clean line, no duplicate line underneath */}
       <td className="px-3 py-3 font-semibold text-wsu-gray-dark">
         {record.displayName}
       </td>
@@ -679,6 +834,7 @@ function FacultyRow({ record }: { record: FotgsFacultyRecordPublic }) {
             href={record.researchWebpage}
             target="_blank"
             rel="noreferrer"
+            aria-label={`Open ${record.displayName}'s research website in a new tab`}
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-wsu-crimson hover:underline"
           >
             Open
@@ -687,5 +843,55 @@ function FacultyRow({ record }: { record: FotgsFacultyRecordPublic }) {
         ) : null}
       </td>
     </tr>
+  );
+}
+
+function FacultyCard({ record }: { record: FotgsFacultyRecordPublic }) {
+  return (
+    <article className="faculty-card rounded-lg border border-wsu-gray/15 bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3 border-b border-wsu-gray/10 pb-3">
+        <h3 className="text-base font-semibold leading-6 text-wsu-gray-dark">
+          {record.displayName}
+        </h3>
+        <span
+          className={`inline-flex shrink-0 rounded-md px-2 py-1 text-xs font-semibold ${appointmentBadgeClass(record.appointmentStatus)}`}
+        >
+          {record.appointmentStatus || "Blank"}
+        </span>
+      </div>
+      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+        <div className="col-span-2">
+          <dt className="text-xs font-semibold uppercase text-wsu-gray">Highest degree</dt>
+          <dd className="mt-1 text-wsu-gray-dark">
+            <WorkdayValue value={record.highestDegree} incomplete={record.workdayDegreeIncomplete} />
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs font-semibold uppercase text-wsu-gray">Rank</dt>
+          <dd className="mt-1 text-wsu-gray-dark">
+            <WorkdayValue value={record.rank} incomplete={record.workdayRankIncomplete} />
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs font-semibold uppercase text-wsu-gray">Status</dt>
+          <dd className="mt-1 text-wsu-gray-dark">{record.fotgsStatus || "Blank"}</dd>
+        </div>
+        <div className="col-span-2">
+          <dt className="text-xs font-semibold uppercase text-wsu-gray">Track/status</dt>
+          <dd className="mt-1 text-wsu-gray-dark">{record.trackAndStatus || "Blank"}</dd>
+        </div>
+      </dl>
+      {record.researchWebpage ? (
+        <a
+          href={record.researchWebpage}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-md border border-wsu-crimson px-3 py-2 text-sm font-semibold text-wsu-crimson hover:bg-wsu-red-soft"
+        >
+          Research website
+          <ExternalLink aria-hidden="true" className="size-4" />
+        </a>
+      ) : null}
+    </article>
   );
 }
