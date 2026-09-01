@@ -1,6 +1,7 @@
 import { createHmac } from "crypto";
 import { readSheet } from "read-excel-file/node";
 import { sanitizePublicHref } from "./safe-url";
+import { repairMissingXlsxCellReferences } from "./xlsx-compat";
 import type {
   FotgsFacultyRecordInternal,
   FotgsImportSummary,
@@ -122,7 +123,7 @@ async function firstSheetRows(
     throw new Error("Legacy .xls files are not supported. Export from OBIEE as .csv or .xlsx.");
   }
 
-  const matrix = await readSheet(buffer, 1);
+  const matrix = await readSheet(repairMissingXlsxCellReferences(buffer), 1);
   return rowsFromMatrix(matrix.map((row) => row.map(cellToString)));
 }
 
